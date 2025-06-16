@@ -9,15 +9,11 @@ fn analyze_disk_data(disks: DisksStructure) {
         // Display each partition
         for partition in partitions {
             // Only display valid partitions (partition number > 0 and reasonable size)
-            if partition.PartitionNumber > 0 && 
-                partition.PartitionNumber < 1000 && 
-                partition.PartitionLength > 0 {
-                println!("  Partition {}: {} MB (offset: {} bytes)", 
-                    partition.PartitionNumber,
-                    partition.PartitionLength / (1024 * 1024),
-                    partition.StartingOffset
-                );
-            }
+            println!("  Partition {}: {} MB (offset: {} bytes)", 
+                partition.PartitionNumber,
+                partition.PartitionLength / (1024 * 1024),
+                partition.StartingOffset
+            );
         }
     }
 }

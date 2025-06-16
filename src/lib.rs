@@ -133,9 +133,20 @@ unsafe fn list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_
     let partitions_ptr = layout.PartitionEntry.as_ptr();
     for partition_idx in 0..layout.PartitionCount {
         let partition = *partitions_ptr.add(partition_idx as usize);
+
+        // MBR disks always return 4 partitions. We check if they are valid here
+        // See https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-drive_layout_information_ex#members
+        if partition.PartitionStyle == PARTITION_STYLE_MBR
+            && partition.Anonymous.Mbr.PartitionType == PARTITION_ENTRY_UNUSED as u8 {
+            continue;
+        }
         partitions.push(partition);
     }
-    
+
+    // Update partition count to match in case of MBR (see above)
+    let mut layout_copy = *layout;
+    layout_copy.PartitionCount = partitions.len() as u32;
+
     // Return the drive layout and partitions
-    Ok(Some((*layout, partitions)))
+    Ok(Some((layout_copy, partitions)))
 }
