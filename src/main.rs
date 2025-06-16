@@ -115,9 +115,11 @@ unsafe fn list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_
         &format!("disk {}", disk_index),
     ) {
         Ok((buf, bytes)) => (buf, bytes),
-        Err(_) => {
-            let _ = CloseHandle(disk);
-            return Ok(None); // Skip drives that can't be queried
+        Err(e) => {
+            if let Err(err) = CloseHandle(disk) {
+                eprintln!("Failed to close handle for {}: {:?}", path, err);
+            }
+            return Err(e);
         }
     };
 
