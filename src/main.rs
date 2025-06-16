@@ -1,7 +1,7 @@
 use lsblk_win::{list_disks, DisksStructure};
 /// Example function showing how to use the structured data returned by list_disk
 fn analyze_disk_data(disks: DisksStructure) {
-    println!("\n=== Disk Analysis Example ===");
+    println!("=== Disk Analysis Example ===");
 
     for (disk_index, (layout, partitions)) in disks.iter().enumerate() {
         println!("Disk {}: {} partition(s)", disk_index, layout.PartitionCount);
