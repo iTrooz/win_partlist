@@ -5,6 +5,7 @@ use windows::{
     Win32::System::Ioctl::*,
     Win32::Foundation::*,
 };
+use log::{debug, warn};
 
 /// Performs DeviceIoControl with automatic buffer reallocation if needed
 /// Returns (success_result, buffer, bytes_returned)
@@ -35,12 +36,12 @@ unsafe fn device_io_control_with_realloc(
                 return Err(err.clone());
             } else {
                 // reallocate buffer
-                eprintln!("{}: Buffer too small, reallocating to {}", debug_name, buffer.len() * 2);
+                debug!("{}: Buffer too small, reallocating to {}", debug_name, buffer.len() * 2);
                 buffer.resize(buffer.len() * 2, 0);
             }
         } else {
             // If the first call succeeded, we can return immediately
-            eprintln!("{}: buffer size was sufficient", debug_name);
+            debug!("{}: buffer size was sufficient", debug_name);
             buffer.resize(bytes_returned as usize, 0);
             return Ok((buffer, bytes_returned));
         }
@@ -106,7 +107,7 @@ unsafe fn try_list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMAT
         Ok((buf, bytes)) => (buf, bytes),
         Err(e) => {
             if let Err(err) = CloseHandle(disk) {
-                eprintln!("Failed to close handle for {}: {:?}", path, err);
+                warn!("Failed to close handle for {}: {:?}", path, err);
             }
             return Err(e);
         }

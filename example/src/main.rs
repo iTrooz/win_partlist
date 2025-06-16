@@ -1,4 +1,5 @@
 use win_partlist::{list_disks, DisksStructure};
+
 /// Example function showing how to use the structured data returned by list_disk
 fn analyze_disk_data(disks: DisksStructure) {
     println!("=== Disk Analysis Example ===");
@@ -20,6 +21,9 @@ fn analyze_disk_data(disks: DisksStructure) {
 
 /// Main entry point - displays logical drives and queries partition info for physical drives
 fn main() {
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
     let disks = list_disks().expect("Failed to list disks");
     analyze_disk_data(disks);
 }
