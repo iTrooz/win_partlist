@@ -119,7 +119,7 @@ unsafe fn list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_
         }
     };
 
-    let _ = CloseHandle(disk);
+    CloseHandle(disk)?;
 
     if bytes_returned < std::mem::size_of::<DRIVE_LAYOUT_INFORMATION_EX>() as u32 {
         return Ok(None);
