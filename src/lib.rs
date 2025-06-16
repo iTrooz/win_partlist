@@ -58,11 +58,12 @@ unsafe fn device_io_control_with_realloc(
 
 pub type DisksStructure = Vec<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>;
 
+/// List all physical disks and their partitions
 pub fn list_disks() -> Result<DisksStructure> {
     let mut disks = Vec::new();
 
     for disk_index in 0..16 { // Assuming up to 16 physical drives
-        let list_disk_res = unsafe { list_disk(disk_index) };
+        let list_disk_res = unsafe { try_list_disk(disk_index) };
         match  list_disk_res {
             Ok(None) => {
                 // Disk does not exist. Assume the end
@@ -79,7 +80,9 @@ pub fn list_disks() -> Result<DisksStructure> {
     Ok(disks)
 }
 
-unsafe fn list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>> {
+/// List the partitions of a physical disk by its index
+/// If disk does not exist, returns Ok(None)
+unsafe fn try_list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>> {
     let path = format!(r"\\.\PhysicalDrive{}", disk_index);
     let wpath: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
 
