@@ -59,14 +59,36 @@ unsafe fn device_io_control_with_realloc(
 unsafe fn list_disks() -> Result<()> {
     // Query the number of physical drives
     for disk_index in 0..16 { // Assuming up to 16 physical drives
-        if let Err(e) = list_disk(disk_index) {
-            eprintln!("Error querying disk {}: {:?}", disk_index, e);
+        match list_disk(disk_index) {
+            Ok(Some((layout, partitions))) => {
+                println!("Disk {}: {} partition(s)", disk_index, layout.PartitionCount);
+                
+                // Display each partition
+                for partition in &partitions {
+                    // Only display valid partitions (partition number > 0 and reasonable size)
+                    if partition.PartitionNumber > 0 && 
+                       partition.PartitionNumber < 1000 && 
+                       partition.PartitionLength > 0 {
+                        println!("  Partition {}: {} MB (offset: {} bytes)", 
+                            partition.PartitionNumber,
+                            partition.PartitionLength / (1024 * 1024),
+                            partition.StartingOffset
+                        );
+                    }
+                }
+            },
+            Ok(None) => {
+                // Disk doesn't exist or couldn't be queried - skip silently
+            },
+            Err(e) => {
+                eprintln!("Error querying disk {}: {:?}", disk_index, e);
+            }
         }
     }
     Ok(())
 }
 
-unsafe fn list_disk(disk_index: u32) -> Result<()> {
+unsafe fn list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>> {
     let path = format!(r"\\.\PhysicalDrive{}", disk_index);
     let wpath: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
 
@@ -82,7 +104,7 @@ unsafe fn list_disk(disk_index: u32) -> Result<()> {
 
     let disk = match disk {
         Ok(handle) => handle,
-        Err(_) => return Ok(()), // Skip drives that don't exist
+        Err(_) => return Ok(None), // Skip drives that don't exist
     };
 
     // get partitions information
@@ -95,36 +117,54 @@ unsafe fn list_disk(disk_index: u32) -> Result<()> {
         Ok((buf, bytes)) => (buf, bytes),
         Err(_) => {
             let _ = CloseHandle(disk);
-            return Ok(()); // Skip drives that can't be queried
+            return Ok(None); // Skip drives that can't be queried
         }
     };
 
     let _ = CloseHandle(disk);
 
     if bytes_returned < std::mem::size_of::<DRIVE_LAYOUT_INFORMATION_EX>() as u32 {
-        return Ok(());
+        return Ok(None);
     }
 
     // Parse the drive layout structure
     let layout = &*(buffer.as_ptr() as *const DRIVE_LAYOUT_INFORMATION_EX);
     
-    println!("Disk {}: {} partition(s)", disk_index, layout.PartitionCount);
-    
-    // Loop over each partition in the PartitionEntry array
+    // Extract partitions into a Vec
+    let mut partitions = Vec::new();
     let partitions_ptr = layout.PartitionEntry.as_ptr();
     for partition_idx in 0..layout.PartitionCount {
         let partition = *partitions_ptr.add(partition_idx as usize);
-        // Only display valid partitions (partition number > 0 and reasonable size)
-        if partition.PartitionNumber > 0 && 
-            partition.PartitionNumber < 1000 && 
-            partition.PartitionLength > 0 {
-            println!("  Partition {}: {} MB (offset: {} bytes)", 
-                partition.PartitionNumber,
-                partition.PartitionLength / (1024 * 1024),
-                partition.StartingOffset
-            );
-        }
+        partitions.push(partition);
     }
+    
+    // Return the drive layout and partitions
+    Ok(Some((*layout, partitions)))
+}
+
+/// Example function showing how to use the structured data returned by list_disk
+unsafe fn analyze_disk_data() -> Result<()> {
+    println!("\n=== Disk Analysis Example ===");
+    
+    if let Ok(Some((layout, partitions))) = list_disk(0) {
+        println!("Disk 0 Analysis:");
+        println!("  Partition Style: {}", layout.PartitionStyle);
+        println!("  Total Partitions: {}", layout.PartitionCount);
+        
+        let mut total_size = 0i64;
+        let mut valid_partitions = 0;
+        
+        for partition in &partitions {
+            if partition.PartitionNumber > 0 && partition.PartitionLength > 0 {
+                total_size += partition.PartitionLength;
+                valid_partitions += 1;
+            }
+        }
+        
+        println!("  Valid Partitions: {}", valid_partitions);
+        println!("  Total Used Space: {} GB", total_size / (1024 * 1024 * 1024));
+    }
+    
     Ok(())
 }
 
@@ -133,6 +173,7 @@ fn main() -> Result<()> {
     println!("=== Physical Drives ===");
     unsafe {
         list_disks().expect("Failed to list disks");
+        analyze_disk_data().expect("Failed to analyze disk data");
     }
     Ok(())
 }
