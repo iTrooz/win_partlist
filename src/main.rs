@@ -104,7 +104,12 @@ unsafe fn list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_
 
     let disk = match disk {
         Ok(handle) => handle,
-        Err(_) => return Ok(None), // Skip drives that don't exist
+        Err(e) => {
+            if e.code() == ERROR_FILE_NOT_FOUND.into() {
+                return Ok(None);
+            }
+            return Err(e);
+        }
     };
 
     // get partitions information
