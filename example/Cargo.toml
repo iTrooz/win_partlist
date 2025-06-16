@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-lsblk-win = { path = "../lib" }
+win_partlist = { path = "../lib" }

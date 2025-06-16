@@ -1,4 +1,4 @@
-use lsblk_win::{list_disks, DisksStructure};
+use win_partlist::{list_disks, DisksStructure};
 /// Example function showing how to use the structured data returned by list_disk
 fn analyze_disk_data(disks: DisksStructure) {
     println!("=== Disk Analysis Example ===");
