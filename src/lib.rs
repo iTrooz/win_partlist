@@ -11,34 +11,15 @@ use windows::{
 unsafe fn device_io_control_with_realloc(
     handle: HANDLE,
     ioctl_code: u32,
-    initial_buffer_size: usize,
     debug_name: &str,
 ) -> Result<(Vec<u8>, u32)> {
-    let mut buffer = vec![0u8; initial_buffer_size];
+    const INITIAL_BUFFER_SIZE: usize = 256;
+    let mut buffer = vec![0u8; INITIAL_BUFFER_SIZE];
     let mut bytes_returned = 0u32;
 
-    // First attempt with initial buffer size
-    let mut result = DeviceIoControl(
-        handle,
-        ioctl_code,
-        None,
-        0,
-        Some(buffer.as_mut_ptr() as *mut _),
-        buffer.len() as u32,
-        Some(&mut bytes_returned),
-        None,
-    );
-
-    // If the buffer was too small, reallocate and try again
-    if result.is_err() && bytes_returned > buffer.len() as u32 {
-        println!("Buffer too small for {}, reallocating from {} to {} bytes", 
-                debug_name, buffer.len(), bytes_returned);
-        
-        // Reallocate buffer with the required size
-        buffer.resize(bytes_returned as usize, 0);
-        
-        // Try again with the larger buffer
-        result = DeviceIoControl(
+    loop {
+        // Attempt to read
+        let result = DeviceIoControl(
             handle,
             ioctl_code,
             None,
@@ -48,11 +29,21 @@ unsafe fn device_io_control_with_realloc(
             Some(&mut bytes_returned),
             None,
         );
-    }
 
-    match result {
-        Ok(_) => Ok((buffer, bytes_returned)),
-        Err(e) => Err(e),
+        if let Err(ref err) = result {
+            if err.code() != ERROR_INSUFFICIENT_BUFFER.into() {
+                return Err(err.clone());
+            } else {
+                // reallocate buffer
+                eprintln!("{}: Buffer too small, reallocating to {}", debug_name, buffer.len() * 2);
+                buffer.resize(buffer.len() * 2, 0);
+            }
+        } else {
+            // If the first call succeeded, we can return immediately
+            eprintln!("{}: buffer size was sufficient", debug_name);
+            buffer.resize(bytes_returned as usize, 0);
+            return Ok((buffer, bytes_returned));
+        }
     }
 }
 
@@ -110,7 +101,6 @@ unsafe fn try_list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMAT
     let (buffer, bytes_returned) = match device_io_control_with_realloc(
         disk,
         IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
-        4096, // Initial buffer size
         &format!("disk {}", disk_index),
     ) {
         Ok((buf, bytes)) => (buf, bytes),
