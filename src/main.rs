@@ -60,6 +60,13 @@ unsafe fn list_disks() -> Result<()> {
     // Query the number of physical drives
     for disk_index in 0..16 { // Assuming up to 16 physical drives
         match list_disk(disk_index) {
+            Ok(None) => {
+                // Disk does not exist. Assume the end
+                break;
+            },
+            Err(e) => {
+                return Err(e);
+            },
             Ok(Some((layout, partitions))) => {
                 println!("Disk {}: {} partition(s)", disk_index, layout.PartitionCount);
                 
@@ -76,12 +83,6 @@ unsafe fn list_disks() -> Result<()> {
                         );
                     }
                 }
-            },
-            Ok(None) => {
-                // Disk doesn't exist or couldn't be queried - skip silently
-            },
-            Err(e) => {
-                eprintln!("Error querying disk {}: {:?}", disk_index, e);
             }
         }
     }
