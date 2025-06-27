@@ -1,11 +1,11 @@
-use windows::{
-    core::*,
-    Win32::Storage::FileSystem::*,
-    Win32::System::IO::*,
-    Win32::System::Ioctl::*,
-    Win32::Foundation::*,
-};
+pub mod types;
 use log::{debug, warn};
+use windows::{
+    core::*, Win32::Foundation::*, Win32::Storage::FileSystem::*, Win32::System::Ioctl::*,
+    Win32::System::IO::*,
+};
+
+use crate::types::Disk;
 
 /// Performs DeviceIoControl with automatic buffer reallocation if needed
 /// Returns (success_result, buffer, bytes_returned)
@@ -36,7 +36,11 @@ unsafe fn device_io_control_with_realloc(
                 return Err(err.clone());
             } else {
                 // reallocate buffer
-                debug!("{}: Buffer too small, reallocating to {}", debug_name, buffer.len() * 2);
+                debug!(
+                    "{}: Buffer too small, reallocating to {}",
+                    debug_name,
+                    buffer.len() * 2
+                );
                 buffer.resize(buffer.len() * 2, 0);
             }
         } else {
@@ -48,22 +52,27 @@ unsafe fn device_io_control_with_realloc(
     }
 }
 
-pub type DisksStructure = Vec<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>;
+pub fn list_disks() -> std::result::Result<Vec<Disk>, Box<dyn std::error::Error>> {
+    Ok(list_disks_win32()?.into_iter().map(|v| v.into()).collect())
+}
 
-/// List all physical disks and their partitions
-pub fn list_disks() -> Result<DisksStructure> {
+pub type Win32Disks = Vec<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>;
+
+/// List all physical disks and their partitions and return Win32 structures
+pub fn list_disks_win32() -> Result<Win32Disks> {
     let mut disks = Vec::new();
 
-    for disk_index in 0..16 { // Assuming up to 16 physical drives
+    for disk_index in 0..16 {
+        // Assuming up to 16 physical drives
         let list_disk_res = unsafe { try_list_disk(disk_index) };
-        match  list_disk_res {
+        match list_disk_res {
             Ok(None) => {
                 // Disk does not exist. Assume the end
                 break;
-            },
+            }
             Err(e) => {
                 return Err(e);
-            },
+            }
             Ok(Some((layout, partitions))) => {
                 disks.push((layout, partitions));
             }
@@ -74,7 +83,9 @@ pub fn list_disks() -> Result<DisksStructure> {
 
 /// List the partitions of a physical disk by its index
 /// If disk does not exist, returns Ok(None)
-unsafe fn try_list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>> {
+unsafe fn try_list_disk(
+    disk_index: u32,
+) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>> {
     let path = format!(r"\\.\PhysicalDrive{}", disk_index);
     let wpath: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
 
@@ -121,7 +132,7 @@ unsafe fn try_list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMAT
 
     // Parse the drive layout structure
     let layout = &*(buffer.as_ptr() as *const DRIVE_LAYOUT_INFORMATION_EX);
-    
+
     // Extract partitions into a Vec
     let mut partitions = Vec::new();
     let partitions_ptr = layout.PartitionEntry.as_ptr();
@@ -131,7 +142,8 @@ unsafe fn try_list_disk(disk_index: u32) -> Result<Option<(DRIVE_LAYOUT_INFORMAT
         // MBR disks always return 4 partitions. We check if they are valid here
         // See https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-drive_layout_information_ex#members
         if partition.PartitionStyle == PARTITION_STYLE_MBR
-            && partition.Anonymous.Mbr.PartitionType == PARTITION_ENTRY_UNUSED as u8 {
+            && partition.Anonymous.Mbr.PartitionType == PARTITION_ENTRY_UNUSED as u8
+        {
             continue;
         }
         partitions.push(partition);

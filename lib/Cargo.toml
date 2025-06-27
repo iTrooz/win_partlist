@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 log = "0.4.27"
+uuid = "1.17.0"
 windows = { version = "0.61.3", features = ["Win32", "Win32_Security", "Win32_Storage", "Win32_Storage_FileSystem", "Win32_Storage_IscsiDisc", "Win32_System", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_WindowsProgramming"] }
