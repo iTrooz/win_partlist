@@ -52,7 +52,8 @@ unsafe fn device_io_control_with_realloc(
     }
 }
 
-pub fn list_disks() -> std::result::Result<Vec<Disk>, Box<dyn std::error::Error>> {
+pub fn list_disks(
+) -> std::result::Result<Vec<Disk>, Box<dyn std::error::Error + Send + Sync + 'static>> {
     Ok(list_disks_win32()?.into_iter().map(|v| v.into()).collect())
 }
 
