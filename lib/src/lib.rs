@@ -45,7 +45,7 @@ unsafe fn device_io_control_with_realloc(
             }
         } else {
             // If the first call succeeded, we can return immediately
-            debug!("{}: buffer size was sufficient", debug_name);
+            debug!("{debug_name}: buffer size was sufficient");
             buffer.resize(bytes_returned as usize, 0);
             return Ok((buffer, bytes_returned));
         }
@@ -87,7 +87,7 @@ pub fn list_disks_win32() -> Result<Win32Disks> {
 unsafe fn try_list_disk(
     disk_index: u32,
 ) -> Result<Option<(DRIVE_LAYOUT_INFORMATION_EX, Vec<PARTITION_INFORMATION_EX>)>> {
-    let path = format!(r"\\.\PhysicalDrive{}", disk_index);
+    let path = format!(r"\\.\PhysicalDrive{disk_index}");
     let wpath: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
 
     let disk = CreateFileW(
@@ -114,12 +114,12 @@ unsafe fn try_list_disk(
     let (buffer, bytes_returned) = match device_io_control_with_realloc(
         disk,
         IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
-        &format!("disk {}", disk_index),
+        &format!("disk {disk_index}"),
     ) {
         Ok((buf, bytes)) => (buf, bytes),
         Err(e) => {
             if let Err(err) = CloseHandle(disk) {
-                warn!("Failed to close handle for {}: {:?}", path, err);
+                warn!("Failed to close handle for {path}: {err:?}");
             }
             return Err(e);
         }
