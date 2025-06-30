@@ -28,7 +28,7 @@ fn analyze_disk_data(disks: Vec<Disk>) {
                     let name: String = String::from_utf16(&gpt.name)
                         .unwrap_or_else(|_| "Invalid UTF-16".to_string());
                     println!(
-                        "    GPT: GUID: {}, Type: {}, Name = {}",
+                        "    GPT: GUID: {}, Type: {}, Name: {}",
                         gpt.partition_id, gpt.partition_type, name
                     );
                 }
