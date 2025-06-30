@@ -8,16 +8,7 @@ on:
 jobs:
   check:
     name: Check
-    runs-on: ${{ matrix.runs-on }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Linux
-            runs-on: ubuntu-latest
-          - name: Windows
-            runs-on: windows-latest
+    runs-on: windows-latest
 
     env:
       RUSTFLAGS: "-D warnings"
@@ -60,14 +51,8 @@ jobs:
         run: cargo doc --all-features --no-deps
 
   test:
-    runs-on: ${{ matrix.runs-on }}
     name: Test
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runs-on: ubuntu-latest
-          - runs-on: windows-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -117,16 +102,8 @@ jobs:
           verbose: true
 
   build:
-    runs-on: ${{ matrix.runs-on }}
     name: Build
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Linux
-            runs-on: ubuntu-latest
-          - name: Windows
-            runs-on: windows-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
